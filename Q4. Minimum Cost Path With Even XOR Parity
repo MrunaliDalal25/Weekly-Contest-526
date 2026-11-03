@@ -1,0 +1,242 @@
+import java.util.*;
+
+class Solution {
+
+    static class Edge {
+        int to, cost;
+
+        Edge(int to, int cost) {
+            this.to = to;
+            this.cost = cost;
+        }
+    }
+
+    static class State {
+        int node, parent, parity;
+        long dist;
+
+        State(int node, int parent, int parity, long dist) {
+            this.node = node;
+            this.parent = parent;
+            this.parity = parity;
+            this.dist = dist;
+        }
+    }
+
+    List<Edge>[] graph;
+    boolean[] removed;
+    int[] parity, parent, size, order, stack;
+    long answer;
+
+    public int minActivationCost(int[][] edges, int[] values) {
+
+        int n = values.length;
+
+        graph = new ArrayList[n];
+
+        for (int i = 0; i < n; i++) {
+            graph[i] = new ArrayList<>();
+        }
+
+        for (int[] edge : edges) {
+            int u = edge[0];
+            int v = edge[1];
+            int w = edge[2];
+
+            graph[u].add(new Edge(v, w));
+            graph[v].add(new Edge(u, w));
+        }
+
+        parity = new int[n];
+
+        for (int i = 0; i < n; i++) {
+            parity[i] = Integer.bitCount(values[i]) & 1;
+        }
+
+        removed = new boolean[n];
+        parent = new int[n];
+        size = new int[n];
+        order = new int[n];
+        stack = new int[n];
+
+        answer = Long.MAX_VALUE;
+
+        decompose(0);
+
+        return answer == Long.MAX_VALUE ? -1 : (int) answer;
+    }
+
+    private void decompose(int start) {
+
+        int centroid = findCentroid(start);
+
+        processCentroid(centroid);
+
+        removed[centroid] = true;
+
+        for (Edge edge : graph[centroid]) {
+            if (!removed[edge.to]) {
+                decompose(edge.to);
+            }
+        }
+    }
+
+    private int findCentroid(int start) {
+
+        int top = 0;
+        int count = 0;
+
+        stack[top++] = start;
+        parent[start] = -1;
+
+        while (top > 0) {
+
+            int node = stack[--top];
+            order[count++] = node;
+
+            for (Edge edge : graph[node]) {
+
+                int next = edge.to;
+
+                if (removed[next] || next == parent[node]) {
+                    continue;
+                }
+
+                parent[next] = node;
+                stack[top++] = next;
+            }
+        }
+
+        for (int i = count - 1; i >= 0; i--) {
+
+            int node = order[i];
+            size[node] = 1;
+
+            for (Edge edge : graph[node]) {
+
+                int next = edge.to;
+
+                if (!removed[next] && parent[next] == node) {
+                    size[node] += size[next];
+                }
+            }
+        }
+
+        int total = count;
+
+        for (int i = 0; i < count; i++) {
+
+            int node = order[i];
+            int maxPart = total - size[node];
+
+            for (Edge edge : graph[node]) {
+
+                int next = edge.to;
+
+                if (!removed[next] && parent[next] == node) {
+                    maxPart = Math.max(maxPart, size[next]);
+                }
+            }
+
+            if (maxPart <= total / 2) {
+                return node;
+            }
+        }
+
+        return start;
+    }
+
+    private void processCentroid(int centroid) {
+
+        // FIX: The centroid itself has its own parity.
+        long[] best = {Long.MAX_VALUE, Long.MAX_VALUE};
+        best[parity[centroid]] = 0L;
+
+        for (Edge edge : graph[centroid]) {
+
+            int neighbor = edge.to;
+
+            if (removed[neighbor]) {
+                continue;
+            }
+
+            List<State> nodes = new ArrayList<>();
+
+            collectNodes(
+                neighbor,
+                centroid,
+                parity[centroid] ^ parity[neighbor],
+                edge.cost,
+                nodes
+            );
+
+            // Check paths between different subtrees.
+            for (State current : nodes) {
+
+                if (current.parity == 0) {
+                    answer = Math.min(answer, current.dist);
+                }
+
+                int requiredParity =
+                    current.parity ^ parity[centroid];
+
+                if (best[requiredParity] != Long.MAX_VALUE) {
+
+                    answer = Math.min(
+                        answer,
+                        current.dist + best[requiredParity]
+                    );
+                }
+            }
+
+            // Add current subtree to previously processed paths.
+            for (State current : nodes) {
+
+                best[current.parity] = Math.min(
+                    best[current.parity],
+                    current.dist
+                );
+            }
+        }
+    }
+
+    private void collectNodes(
+        int start,
+        int par,
+        int initialParity,
+        long initialDist,
+        List<State> nodes
+    ) {
+
+        ArrayDeque<State> queue = new ArrayDeque<>();
+
+        queue.offer(
+            new State(start, par, initialParity, initialDist)
+        );
+
+        while (!queue.isEmpty()) {
+
+            State current = queue.poll();
+
+            nodes.add(current);
+
+            for (Edge edge : graph[current.node]) {
+
+                int next = edge.to;
+
+                if (next == current.parent || removed[next]) {
+                    continue;
+                }
+
+                queue.offer(
+                    new State(
+                        next,
+                        current.node,
+                        current.parity ^ parity[next],
+                        current.dist + edge.cost
+                    )
+                );
+            }
+        }
+    }
+}
