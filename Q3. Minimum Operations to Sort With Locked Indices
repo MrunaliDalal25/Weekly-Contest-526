@@ -3,11 +3,25 @@ class Solution {
     public int minOperations(int[] nums, int[] locked, int k) {
 
         int n = nums.length;
+
+        int[] suffixMin = new int[n];
+        int prefixMax = 0;
+
+        // Calculate suffix minimums.
+        suffixMin[n - 1] = nums[n - 1];
+
+        for (int i = n - 2; i >= 0; i--) {
+            suffixMin[i] = Math.min(nums[i], suffixMin[i + 1]);
+        }
+
+        // Count locked indices that participate in inversions.
         int unlockCount = 0;
 
-        // Count locked positions that must be unlocked
         for (int i = 0; i < n; i++) {
-            if (nums[i] != i + 1 && locked[i] == 1) {
+
+            prefixMax = Math.max(prefixMax, nums[i]);
+
+            if (prefixMax > suffixMin[i] && locked[i] == 1) {
                 unlockCount++;
             }
         }
@@ -16,20 +30,18 @@ class Solution {
             return -1;
         }
 
-        // Count inversions using Fenwick Tree
+        // Count inversions using Fenwick Tree.
         int[] bit = new int[n + 1];
-        long swaps = 0;
+        int swaps = 0;
 
         for (int i = n - 1; i >= 0; i--) {
 
-            int value = nums[i];
+            swaps += query(bit, nums[i] - 1);
 
-            swaps += query(bit, value - 1);
-
-            update(bit, n, value);
+            update(bit, n, nums[i]);
         }
 
-        return (int) (swaps + unlockCount);
+        return unlockCount + swaps;
     }
 
     private void update(int[] bit, int n, int index) {
