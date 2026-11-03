@@ -1,0 +1,32 @@
+class Solution {
+    public long minimumMaxValue(int n, int index, int value) {
+
+        // Value 1 cannot have a neighbor with GCD > 1
+        if (value == 1) {
+            return -1;
+        }
+
+        // Find smallest prime factor
+        int p = value;
+
+        for (int i = 2; i * i <= value; i++) {
+            if (value % i == 0) {
+                p = i;
+                break;
+            }
+        }
+
+        // Check whether left side is possible
+        if ((long) value - p < 2L * index) {
+            return -1;
+        }
+
+        int right = n - index - 1;
+
+        if (right == 0) {
+            return value;
+        }
+
+        return (long) value + p + 2L * (right - 1);
+    }
+}
