@@ -1,0 +1,54 @@
+class Solution {
+
+    public int minOperations(int[] nums, int[] locked, int k) {
+
+        int n = nums.length;
+        int unlockCount = 0;
+
+        // Count locked positions that must be unlocked
+        for (int i = 0; i < n; i++) {
+            if (nums[i] != i + 1 && locked[i] == 1) {
+                unlockCount++;
+            }
+        }
+
+        if (unlockCount > k) {
+            return -1;
+        }
+
+        // Count inversions using Fenwick Tree
+        int[] bit = new int[n + 1];
+        long swaps = 0;
+
+        for (int i = n - 1; i >= 0; i--) {
+
+            int value = nums[i];
+
+            swaps += query(bit, value - 1);
+
+            update(bit, n, value);
+        }
+
+        return (int) (swaps + unlockCount);
+    }
+
+    private void update(int[] bit, int n, int index) {
+
+        while (index <= n) {
+            bit[index]++;
+            index += index & -index;
+        }
+    }
+
+    private int query(int[] bit, int index) {
+
+        int sum = 0;
+
+        while (index > 0) {
+            sum += bit[index];
+            index -= index & -index;
+        }
+
+        return sum;
+    }
+}
